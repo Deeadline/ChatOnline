@@ -6,5 +6,6 @@ namespace ChatOnline.Interface
     public interface ITypedHubClient
     {
         Task BroadcastMessage(Message message);
+        Task Reload(Room room);
     }
 }

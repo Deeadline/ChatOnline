@@ -1,8 +1,16 @@
 ﻿using ChatOnline.Controllers;
+using ChatOnline.Database;
+using ChatOnline.Interface;
+using ChatOnline.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Text;
 
 namespace ChatOnline
 {
@@ -15,12 +23,25 @@ namespace ChatOnline
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc();
-            services.AddCors(o => o.AddPolicy("CorsPolicy", builder =>
+            services.AddSingleton<IJWTService, JWTService>();
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    builder.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin().AllowCredentials();
-                }));
+                    ClockSkew = TimeSpan.Zero,
+                    ValidateAudience = true,
+                    ValidateIssuer = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = "",
+                    ValidAudience = "",
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("babababababababababababa"))
+                };
+            });
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseMySql(Configuration.GetConnectionString("DefaultConnection")));
 
+            services.AddCors();
+            services.AddMvc();
             services.AddSignalR();
         }
 
@@ -29,9 +50,11 @@ namespace ChatOnline
         {
             if (env.IsDevelopment())
             {
+                app.UseBrowserLink();
                 app.UseDeveloperExceptionPage();
             }
-            app.UseCors("CorsPolicy");
+
+            app.UseCors(options => options.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod().AllowCredentials());
             app.UseSignalR(routes =>
             {
                 routes.MapHub<ChatHub>("/chat");
