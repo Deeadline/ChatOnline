@@ -10,9 +10,8 @@ namespace ChatOnline.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public string Content { get; set; }
-        public User Sender { get; set; }
+        public string Sender { get; set; }
         public DateTime SendTime { get; set; }
-        public virtual Room Room { get; set; }
         public Message() => SendTime = DateTime.Now;
     }
 }

@@ -13,6 +13,5 @@ namespace ChatOnline.Models
         public string Password { get; set; }
         public string ConfirmPassword { get; set; }
         public string FileName { get; set; }
-        public virtual Room Room { get; set; }
     }
 }

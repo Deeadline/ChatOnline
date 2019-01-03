@@ -1,4 +1,6 @@
 ﻿using ChatOnline.Models;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace ChatOnline.Interface
@@ -6,6 +8,7 @@ namespace ChatOnline.Interface
     public interface ITypedHubClient
     {
         Task BroadcastMessage(Message message);
-        Task Reload(Room room);
+        Task ReceiveRoom(Room room);
+        Task ReceiveRooms(List<Tuple<int, string>> roomNames);
     }
 }

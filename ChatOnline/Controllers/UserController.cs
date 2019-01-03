@@ -76,7 +76,7 @@ namespace ChatOnline.Controllers
                     }
 
                     var user = context.Users.Single(x => x.Id == userId);
-                    user.FileName = fileName;
+                    user.FileName = fullPath;
                     context.Update(user);
                     context.SaveChanges();
                 }

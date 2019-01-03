@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using System;
 using System.Text;
 
@@ -41,7 +42,7 @@ namespace ChatOnline
                 options.UseMySql(Configuration.GetConnectionString("DefaultConnection")));
 
             services.AddCors();
-            services.AddMvc();
+            services.AddMvc().AddJsonOptions(options => options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);
             services.AddSignalR();
         }
 
