@@ -29,7 +29,7 @@ namespace ChatOnline.Controllers
         public void EnterRoom(string roomName, int userId)
         {
             // Pobieramy użytkownika (wiemy, że istnieje), oraz pokój po jego nazwie
-            var room = context.Rooms.Include(x => x.Messages).Include(y => y.Users).SingleOrDefault(room1 => room1.Name.Equals(roomName));
+            var room = context.Rooms.Include(x => x.Messages).SingleOrDefault(room1 => room1.Name.Equals(roomName));
             var user = context.Users.Single(x => x.Id.Equals(userId));
 
             if (room != null)
@@ -45,27 +45,35 @@ namespace ChatOnline.Controllers
                 room.Users.Add(user);
                 context.SaveChanges();
 
-                Clients.Clients(Context.ConnectionId).ReceiveRoom(room).GetAwaiter().GetResult();
+                //Clients.Client(Context.ConnectionId).ReceiveRoom(room).GetAwaiter().GetResult();
+                Clients.Clients(RoomConnections[roomName]).ReceiveRoom(room).GetAwaiter().GetResult();
             }
         }
 
         // Kiedy uzytkownik zmieni pokoj A na B
         public void ChangeRoom(string roomName, int userId)
         {
-            //pobieramy naszego uzytkownika z bazy i pokoj + usuwamy z pokoju(db) uzytkownika
-            var user = context.Users.Single(x => x.Id.Equals(userId));
-            var oldRoom = context.Rooms.Single(r => r.Users.Contains(user));
-            oldRoom.Users.Remove(user);
-            context.SaveChanges();
-
-            // a tutaj z naszego słownika usuwamy Context.ConnectionId
+            var name = string.Empty;
+            //pobieramy pokoj z bazy danych po nazwie ze słownika
             foreach (var rooms in RoomConnections)
             {
                 if (rooms.Value.Contains(Context.ConnectionId))
                 {
+                    name = rooms.Key;
                     rooms.Value.Remove(Context.ConnectionId);
                 }
             }
+
+            //pobieramy naszego uzytkownika z bazy i pokoj + usuwamy z pokoju(db) uzytkownika
+            var user = context.Users.Single(x => x.Id.Equals(userId));
+            var oldRoom = context.Rooms.Include(m => m.Messages).Include(u => u.Users).SingleOrDefault(o => o.Name.Equals(name));
+
+            if (oldRoom == null) return;
+
+            oldRoom.Users.Remove(user);
+            context.SaveChanges();
+
+            Clients.Clients(RoomConnections[name]).ReceiveRoom(oldRoom).GetAwaiter().GetResult();
             // i wchodzimy do pokoju
             EnterRoom(roomName, userId);
         }
@@ -73,33 +81,14 @@ namespace ChatOnline.Controllers
         //Do wylogowania się kompletnie.
         public void LeaveRoom(int userId)
         {
-            var user = context.Users.Single(x => x.Id.Equals(userId));
+            var user = context.Users.SingleOrDefault(x => x.Id.Equals(userId));
             var room = context.Rooms.Include(x => x.Messages).Include(y => y.Users).SingleOrDefault(r => r.Users.Contains(user));
             if (room == null) return;
             room.Users.Remove(user);
             context.SaveChanges();
 
-            // tutaj z naszego słownika usuwamy Context.ConnectionId i pobieramy liste dostepnych uzytkownikow w pokoju
-            foreach (var rooms in RoomConnections)
-            {
-                if (rooms.Value.Contains(Context.ConnectionId))
-                {
-                    rooms.Value.Remove(Context.ConnectionId);
-                }
-            }
-            var users = new List<string>();
-            foreach (var rooms in RoomConnections)
-            {
-                if (rooms.Value.Contains(Context.ConnectionId))
-                {
-                    users = rooms.Value;
-                }
-            }
-
-            context.Update(room);
-            context.SaveChanges();
             // i odswiezamy pokoj innym
-            Clients.Clients(users).ReceiveRoom(room).GetAwaiter().GetResult();
+            Clients.Clients(RoomConnections[room.Name]).ReceiveRoom(room).GetAwaiter().GetResult();
         }
 
         // Wysylamy wiadomosc do uzytkownikow + zapisujemy ja do obecnego pokoju.

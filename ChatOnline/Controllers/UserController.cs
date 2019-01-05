@@ -17,6 +17,7 @@ namespace ChatOnline.Controllers
         private readonly IJWTService jwt;
         private readonly ApplicationDbContext context;
         private readonly IHostingEnvironment environment;
+
         public UserController(IJWTService jwt, ApplicationDbContext context, IHostingEnvironment environment)
         {
             this.jwt = jwt;
@@ -42,9 +43,10 @@ namespace ChatOnline.Controllers
             var returnValue = context.Users.SingleOrDefault(x => x.Login.Equals(user.Login));
             if (returnValue == null)
             {
-                return NotFound(new { message = "User not found in db" });
+                return NotFound(new {message = "User not found in db"});
             }
-            return Ok(new { token = jwt.Generate(returnValue) });
+
+            return Ok(new {token = jwt.Generate(returnValue)});
         }
 
         [HttpGet("Logout")]
@@ -59,13 +61,14 @@ namespace ChatOnline.Controllers
             try
             {
                 var file = Request.Form.Files[0];
-                string folderName = "Upload";
+                string folderName = "Uploads";
                 string webRootPath = environment.WebRootPath;
                 string newPath = Path.Combine(webRootPath, folderName);
                 if (!Directory.Exists(newPath))
                 {
                     Directory.CreateDirectory(newPath);
                 }
+
                 if (file.Length > 0)
                 {
                     string fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName.Trim('"');
@@ -76,17 +79,24 @@ namespace ChatOnline.Controllers
                     }
 
                     var user = context.Users.Single(x => x.Id == userId);
-                    user.FileName = fullPath;
+                    user.FileName = fileName;
                     context.Update(user);
                     context.SaveChanges();
                 }
 
-                return Ok(new { response = "Good job!" });
+                return Ok(new {response = "Good job!"});
             }
             catch (System.Exception ex)
             {
                 return BadRequest("Upload Failed: " + ex.Message);
             }
+        }
+
+        [HttpGet("Download")]
+        public IActionResult Download(string photoName)
+        {
+            var content = $"http://{Request.Host}/uploads/{photoName}";
+            return Ok(new {url = content});
         }
     }
 }
