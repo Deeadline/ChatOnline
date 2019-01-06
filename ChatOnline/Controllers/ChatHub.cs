@@ -15,13 +15,12 @@ namespace ChatOnline.Controllers
         private readonly ApplicationDbContext context;
         private static readonly Dictionary<string, List<string>> RoomConnections = new Dictionary<string, List<string>>();
 
-
         public ChatHub(ApplicationDbContext context) => this.context = context;
 
         public override Task OnConnectedAsync()
         {
-            var roomNames = context.Rooms.AsNoTracking().Select(x => Tuple.Create(x.Id, x.Name)).ToList();
-            Clients.Client(Context.ConnectionId).ReceiveRooms(roomNames).GetAwaiter().GetResult();
+            var rooms = context.Rooms.AsNoTracking().Select(x => Tuple.Create(x.Id, x.Name)).ToList();
+            Clients.Client(Context.ConnectionId).ReceiveRooms(rooms).GetAwaiter().GetResult();
             return base.OnConnectedAsync();
         }
 
@@ -29,7 +28,7 @@ namespace ChatOnline.Controllers
         public void EnterRoom(string roomName, int userId)
         {
             // Pobieramy użytkownika (wiemy, że istnieje), oraz pokój po jego nazwie
-            var room = context.Rooms.Include(x => x.Messages).SingleOrDefault(room1 => room1.Name.Equals(roomName));
+            var room = context.Rooms.Include(x => x.Messages).Include(y => y.Users).SingleOrDefault(room1 => room1.Name.Equals(roomName));
             var user = context.Users.Single(x => x.Id.Equals(userId));
 
             if (room != null)
@@ -39,14 +38,19 @@ namespace ChatOnline.Controllers
                 {
                     RoomConnections.Add(roomName, new List<string>());
                 }
+
+                var otherUsers = RoomConnections[roomName];
                 RoomConnections[roomName].Add(Context.ConnectionId);
 
                 // Tutaj sobie dodajemy do bazy danych do naszego pokoju użytkownika
                 room.Users.Add(user);
                 context.SaveChanges();
+                if (otherUsers.Count > 0)
+                {
+                    Clients.Clients(otherUsers).ReceiveRoom(room).GetAwaiter().GetResult();
+                }
 
-                //Clients.Client(Context.ConnectionId).ReceiveRoom(room).GetAwaiter().GetResult();
-                Clients.Clients(RoomConnections[roomName]).ReceiveRoom(room).GetAwaiter().GetResult();
+                Clients.Client(Context.ConnectionId).ReceiveRoom(room).GetAwaiter().GetResult();
             }
         }
 
@@ -64,6 +68,8 @@ namespace ChatOnline.Controllers
                 }
             }
 
+            var oldRoomUsers = RoomConnections[name];
+
             //pobieramy naszego uzytkownika z bazy i pokoj + usuwamy z pokoju(db) uzytkownika
             var user = context.Users.Single(x => x.Id.Equals(userId));
             var oldRoom = context.Rooms.Include(m => m.Messages).Include(u => u.Users).SingleOrDefault(o => o.Name.Equals(name));
@@ -73,7 +79,7 @@ namespace ChatOnline.Controllers
             oldRoom.Users.Remove(user);
             context.SaveChanges();
 
-            Clients.Clients(RoomConnections[name]).ReceiveRoom(oldRoom).GetAwaiter().GetResult();
+            Clients.Clients(oldRoomUsers).ReceiveRoom(oldRoom).GetAwaiter().GetResult();
             // i wchodzimy do pokoju
             EnterRoom(roomName, userId);
         }
