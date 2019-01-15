@@ -40,7 +40,7 @@ namespace ChatOnline
             });
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseMySql(Configuration.GetConnectionString("DefaultConnection")));
-
+            services.AddDirectoryBrowser();
             services.AddCors();
             services.AddMvc().AddJsonOptions(options => options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);
             services.AddSignalR();
@@ -54,8 +54,7 @@ namespace ChatOnline
                 app.UseBrowserLink();
                 app.UseDeveloperExceptionPage();
             }
-
-            app.UseStaticFiles();
+            app.UseFileServer(enableDirectoryBrowsing: true);
             app.UseCors(options => options.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod().AllowCredentials());
             app.UseSignalR(routes =>
             {

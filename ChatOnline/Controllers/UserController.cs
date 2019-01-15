@@ -1,4 +1,5 @@
-﻿using ChatOnline.Database;
+﻿
+using ChatOnline.Database;
 using ChatOnline.Interface;
 using ChatOnline.Models;
 using Microsoft.AspNetCore.Hosting;
@@ -61,8 +62,8 @@ namespace ChatOnline.Controllers
             try
             {
                 var file = Request.Form.Files[0];
-                string folderName = "Uploads";
-                string webRootPath = environment.WebRootPath;
+                string folderName = "wwwroot/uploads";
+                string webRootPath = environment.ContentRootPath;
                 string newPath = Path.Combine(webRootPath, folderName);
                 if (!Directory.Exists(newPath))
                 {
